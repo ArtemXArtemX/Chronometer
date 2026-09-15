@@ -3,6 +3,7 @@ package com.example.chronometer
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -18,12 +19,13 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
 
     private var elapsedMs: Long = 0L
+    private var startTime: Long = 0L
     private var isRunning: Boolean = false
 
     private val ticker = object : Runnable {
         override fun run() {
             if (isRunning) {
-                elapsedMs += TICK_MS
+                elapsedMs = SystemClock.elapsedRealtime() - startTime
                 updateTimerText()
                 handler.postDelayed(this, TICK_MS)
             }
@@ -39,6 +41,15 @@ class MainActivity : AppCompatActivity() {
         btnPause = findViewById(R.id.btnPause)
         btnReset = findViewById(R.id.btnReset)
 
+        if (savedInstanceState != null) {
+            elapsedMs = savedInstanceState.getLong(KEY_ELAPSED, 0L)
+            isRunning = savedInstanceState.getBoolean(KEY_RUNNING, false)
+            if (isRunning) {
+                startTime = SystemClock.elapsedRealtime() - elapsedMs
+                handler.post(ticker)
+            }
+        }
+
         btnStart.setOnClickListener { startTimer() }
         btnPause.setOnClickListener { pauseTimer() }
         btnReset.setOnClickListener { resetTimer() }
@@ -46,16 +57,30 @@ class MainActivity : AppCompatActivity() {
         updateTimerText()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (isRunning) {
+            elapsedMs = SystemClock.elapsedRealtime() - startTime
+        }
+        outState.putLong(KEY_ELAPSED, elapsedMs)
+        outState.putBoolean(KEY_RUNNING, isRunning)
+    }
+
     private fun startTimer() {
         if (!isRunning) {
             isRunning = true
+            startTime = SystemClock.elapsedRealtime() - elapsedMs
             handler.post(ticker)
         }
     }
 
     private fun pauseTimer() {
-        isRunning = false
-        handler.removeCallbacks(ticker)
+        if (isRunning) {
+            elapsedMs = SystemClock.elapsedRealtime() - startTime
+            isRunning = false
+            handler.removeCallbacks(ticker)
+            updateTimerText()
+        }
     }
 
     private fun resetTimer() {
@@ -79,5 +104,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TICK_MS = 1000L
+        private const val KEY_ELAPSED = "key_elapsed"
+        private const val KEY_RUNNING = "key_running"
     }
 }
