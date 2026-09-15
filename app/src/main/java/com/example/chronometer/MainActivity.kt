@@ -1,59 +1,83 @@
 package com.example.chronometer
 
 import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
+import android.os.Handler
+import android.os.Looper
+import android.widget.Button
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
-import com.example.chronometer.databinding.ActivityMainBinding
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var tvTimer: TextView
+    private lateinit var btnStart: Button
+    private lateinit var btnPause: Button
+    private lateinit var btnReset: Button
+
+    private val handler = Handler(Looper.getMainLooper())
+
+    private var elapsedMs: Long = 0L
+    private var isRunning: Boolean = false
+
+    private val ticker = object : Runnable {
+        override fun run() {
+            if (isRunning) {
+                elapsedMs += TICK_MS
+                updateTimerText()
+                handler.postDelayed(this, TICK_MS)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        tvTimer = findViewById(R.id.tvTimer)
+        btnStart = findViewById(R.id.btnStart)
+        btnPause = findViewById(R.id.btnPause)
+        btnReset = findViewById(R.id.btnReset)
 
-        setSupportActionBar(binding.toolbar)
+        btnStart.setOnClickListener { startTimer() }
+        btnPause.setOnClickListener { pauseTimer() }
+        btnReset.setOnClickListener { resetTimer() }
 
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
+        updateTimerText()
+    }
 
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
+    private fun startTimer() {
+        if (!isRunning) {
+            isRunning = true
+            handler.post(ticker)
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
+    private fun pauseTimer() {
+        isRunning = false
+        handler.removeCallbacks(ticker)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when (item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
-        }
+    private fun resetTimer() {
+        isRunning = false
+        handler.removeCallbacks(ticker)
+        elapsedMs = 0L
+        updateTimerText()
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+    private fun updateTimerText() {
+        val totalSeconds = elapsedMs / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        tvTimer.text = String.format(Locale.US, "%02d:%02d", minutes, seconds)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacks(ticker)
+    }
+
+    companion object {
+        private const val TICK_MS = 1000L
     }
 }
