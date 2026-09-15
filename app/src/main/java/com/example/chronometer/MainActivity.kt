@@ -90,11 +90,18 @@ class MainActivity : AppCompatActivity() {
         updateTimerText()
     }
 
+    private fun updateButtons() {
+        btnStart.isEnabled = !isRunning
+        btnPause.isEnabled = isRunning
+        btnReset.isEnabled = elapsedMs > 0L
+    }
+
     private fun updateTimerText() {
         val totalSeconds = elapsedMs / 1000
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
         tvTimer.text = String.format(Locale.US, "%02d:%02d", minutes, seconds)
+        updateButtons()
     }
 
     override fun onDestroy() {
@@ -103,7 +110,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TICK_MS = 1000L
+        private const val TICK_MS = 100L
         private const val KEY_ELAPSED = "key_elapsed"
         private const val KEY_RUNNING = "key_running"
     }
